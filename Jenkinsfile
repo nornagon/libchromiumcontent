@@ -15,7 +15,7 @@ pipeline {
             steps {
               timeout(300) {
                 sh 'script/bootstrap'
-                sh 'script/update --clean -t $TARGET_ARCH'
+                sh 'script/update --clean -t $TARGET_ARCH --ignore_git_cache_locks'
                 sh 'script/build -t $TARGET_ARCH -c $COMPONENT'
                 sh 'script/build -t $TARGET_ARCH -c ffmpeg'
                 sh 'script/create-dist -t $TARGET_ARCH -c $COMPONENT'
@@ -48,7 +48,7 @@ pipeline {
             steps {
               timeout(300) {
                 sh 'script/bootstrap'
-                sh 'script/update --clean -t $TARGET_ARCH'
+                sh 'script/update --clean -t $TARGET_ARCH --ignore_git_cache_locks'
                 sh 'script/build -t $TARGET_ARCH -c $COMPONENT'
                 sh 'script/build -t $TARGET_ARCH -c ffmpeg'
                 sh 'script/create-dist -t $TARGET_ARCH -c $COMPONENT'
@@ -82,7 +82,7 @@ pipeline {
           steps {
             timeout(300) {
               sh 'script/bootstrap'
-              sh 'script/update --clean -t $TARGET_ARCH'
+              sh 'script/update --clean -t $TARGET_ARCH --ignore_git_cache_locks'
               sh 'script/build -t $TARGET_ARCH -c $COMPONENT'
               sh 'script/build -t $TARGET_ARCH -c ffmpeg'
               sh 'script/create-dist -t $TARGET_ARCH -c $COMPONENT'
@@ -116,7 +116,7 @@ pipeline {
           steps {
             timeout(300) {
               sh 'script/bootstrap'
-              sh 'script/update --clean -t $TARGET_ARCH'
+              sh 'script/update --clean -t $TARGET_ARCH --ignore_git_cache_locks'
               sh 'script/build -t $TARGET_ARCH -c $COMPONENT'
               sh 'script/build -t $TARGET_ARCH -c ffmpeg'
               sh 'script/create-dist -t $TARGET_ARCH -c $COMPONENT'
