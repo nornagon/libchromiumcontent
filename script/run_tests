@@ -7,7 +7,11 @@ import re
 import sys
 import subprocess
 
-from lib.config import get_output_dir
+from lib.config import get_output_dir, VENDOR_DIR
+
+PYYAML_LIB_DIR = os.path.join(VENDOR_DIR, 'pyyaml', 'lib')
+sys.path.append(PYYAML_LIB_DIR)
+import yaml
 
 SOURCE_ROOT = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 if sys.platform in ['win32', 'cygwin']:
@@ -18,17 +22,43 @@ else:
 def GetTestsToRun(args):
   build_dir = get_output_dir(SOURCE_ROOT, args.target_arch, 'tests')
   tests = []
-  for file_name in os.listdir(build_dir):
-    if re.search(BINARY_TEST_REGEX, file_name):
-      tests.append(os.path.join(build_dir, file_name))
+  if args.only is None:
+    for file_name in os.listdir(build_dir):
+      if args.exclude and file_name in args.exclude:
+        continue
+      if re.search(BINARY_TEST_REGEX, file_name):
+        tests.append(os.path.join(build_dir, file_name))
+  else:
+    for test_name in args.only:
+      if args.exclude and test_name in args.exclude:
+        continue
+      test_file = os.path.join(build_dir, test_name)
+      if os.path.isfile(test_file):
+        tests.append(test_file)
+      else:
+        print 'Invalid test target name: ' + test_name
   return tests
 
-def RunTests(binary_tests):
+def RunTests(binary_tests, generate_report):
   if binary_tests:
+    disabled_tests_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'disabled-tests.yaml')
+    disabled_tests = {}
+    if os.path.isfile(disabled_tests_path):
+      disabled_tests = yaml.load(file(disabled_tests_path, 'r'))
+    else:
+      print 'No disabled-tests.yaml file found. Not excluding any tests.'
     results = []
     for test in binary_tests:
+      test_args = [test]
+      test_name = os.path.basename(test)
+      if disabled_tests and test_name in disabled_tests and disabled_tests[test_name]:
+        exclusion_filter = '-' + ':'.join(disabled_tests[test_name])
+        test_args.append('--gtest_filter=%s' % exclusion_filter)
+      # Add reporting path if enabled
+      if generate_report:
+        test_args.append("--gtest_output=xml:" + get_output_file_path(test_name))
       results.append((os.path.basename(test),
-                      subprocess.call([test]) == 0))
+                      subprocess.call(test_args) == 0))
     failed = [test
               for (test, success) in results
               if not success]
@@ -44,14 +74,18 @@ def RunTests(binary_tests):
     print 'Nothing to test - no tests found!'
   return 0
 
+def get_output_file_path(test_name):
+  return os.path.join(SOURCE_ROOT, 'test_reports', test_name + os.path.extsep + 'xml')
+
 def main():
   parser = argparse.ArgumentParser(description='Run Chromium tests')
   parser.add_argument('-t', '--target_arch', default='x64', help='x64 or ia32')
-  tests = GetTestsToRun(parser.parse_args())
-  if not tests:
-    return 1
-  return RunTests(tests)
+  parser.add_argument('--only', nargs='+', help='Names of the test targets to run. For example: base_unittests url_unittests')
+  parser.add_argument('--exclude', nargs='+', help='Names of the test targets to exclude. For example: base_unittests url_unittests')
+  parser.add_argument('--generate_report', action='store_true', help='Generate xml reports for test runs. Mainly for CI.')
+  args = parser.parse_args()
+  tests = GetTestsToRun(args)
+  return RunTests(tests, args.generate_report)
 
 if __name__ == '__main__':
   sys.exit(main())
-
